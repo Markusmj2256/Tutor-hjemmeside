@@ -29,6 +29,7 @@ import './App.css'
 
 const assetPath = (path) => `${import.meta.env.BASE_URL}${path}`
 const contactEmail = 'markusmj2256@gmail.com'
+const formSubmitEndpoint = `https://formsubmit.co/ajax/${contactEmail}`
 const heroIllustration = assetPath('images/tutor_hero_cartoon.jpg')
 const mathIllustration = assetPath('images/math_tutoring_cartoon.jpg')
 const physicsIllustration = assetPath('images/physics_study_cartoon.jpg')
@@ -165,6 +166,7 @@ function ContactForm({ title, description, tone = 'light', defaultPackage = '' }
     studentNeeds: '',
     interestedPackage: defaultPackage,
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const contactMutation = trpc.contact.sendContact.useMutation()
   const isDark = tone === 'dark'
@@ -183,35 +185,61 @@ function ContactForm({ title, description, tone = 'light', defaultPackage = '' }
       return
     }
 
-    const openMailFallback = () => {
-      const subject = encodeURIComponent(`Ny henvendelse: ${formData.name}`)
-      const body = encodeURIComponent(
+    const sendWithFormSubmit = async () => {
+      const payload = new FormData()
+      const selectedPackage = formData.interestedPackage || 'Ikke specificeret'
+      const studentNeeds = formData.studentNeeds || 'Ikke specificeret'
+
+      payload.append('name', formData.name)
+      payload.append('email', formData.email)
+      payload.append('_replyto', formData.email)
+      payload.append('Telefon', formData.phone)
+      payload.append('Interesse', selectedPackage)
+      payload.append('Beskrivelse af eleven og udfordringerne', studentNeeds)
+      payload.append(
+        'message',
         [
           'Ny henvendelse fra tutorsiden',
           '',
-          'Kontaktoplysninger:',
           `Navn: ${formData.name}`,
           `Email: ${formData.email}`,
           `Telefon: ${formData.phone}`,
+          `Interesse: ${selectedPackage}`,
           '',
-          `Interesse: ${formData.interestedPackage || 'Ikke specificeret'}`,
-          '',
-          'Beskrivelse af eleven og udfordringer:',
-          formData.studentNeeds || 'Ikke specificeret',
+          'Beskrivelse af eleven og udfordringerne:',
+          studentNeeds,
         ].join('\n')
       )
+      payload.append('_subject', `Ny henvendelse fra tutorsiden: ${formData.name}`)
+      payload.append('_template', 'table')
+      payload.append('_captcha', 'false')
 
-      window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`
+      const response = await fetch(formSubmitEndpoint, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+        },
+        body: payload,
+      })
+
+      if (!response.ok) {
+        throw new Error('Formularen kunne ikke sendes')
+      }
     }
 
-    if (isStaticHosting) {
-      openMailFallback()
-      toast.success('Din mailapp åbner med henvendelsen udfyldt.')
-      return
-    }
+    setIsSubmitting(true)
 
     try {
-      await contactMutation.mutateAsync(formData)
+      if (isStaticHosting) {
+        await sendWithFormSubmit()
+      } else {
+        try {
+          await contactMutation.mutateAsync(formData)
+        } catch (error) {
+          await sendWithFormSubmit()
+        }
+      }
+
       toast.success('Tak for din henvendelse. Du bliver kontaktet hurtigst muligt.')
       setFormData({
         name: '',
@@ -221,8 +249,9 @@ function ContactForm({ title, description, tone = 'light', defaultPackage = '' }
         interestedPackage: defaultPackage,
       })
     } catch (error) {
-      openMailFallback()
-      toast.error('Direkte afsendelse virkede ikke, så mailappen åbner med beskeden udfyldt.')
+      toast.error('Beskeden kunne ikke sendes lige nu. Prøv igen om lidt, eller kontakt mig på mail eller telefon.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -335,10 +364,10 @@ function ContactForm({ title, description, tone = 'light', defaultPackage = '' }
             ? 'bg-amber-300 text-slate-950 hover:bg-amber-200'
             : 'bg-teal-700 text-white hover:bg-teal-800'
         }`}
-        disabled={contactMutation.isPending}
+        disabled={isSubmitting || contactMutation.isPending}
       >
         <Send className="size-4" />
-        {contactMutation.isPending ? 'Sender...' : 'Send henvendelse'}
+        {isSubmitting || contactMutation.isPending ? 'Sender...' : 'Send henvendelse'}
       </Button>
     </form>
   )
@@ -704,7 +733,7 @@ function HomePage() {
 
           <ContactForm
             title="Send en henvendelse"
-            description="Kontaktformularen sender navn, mail, telefon og beskrivelse af elevens udfordringer."
+            description="Formularen sender navn, mail, telefon og beskrivelse af elevens udfordringer direkte fra hjemmesiden."
             defaultPackage="Ved ikke endnu"
           />
         </div>
