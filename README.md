@@ -1,4 +1,4 @@
-# Codex-hjemmeside
+# Tutor-hjemmeside
 
 Hjemmeside for Markus Johnsens naturfaglige tutorservice.
 
@@ -21,7 +21,7 @@ GITHUB_PAGES=true pnpm run build
 Den statiske side hostes på:
 
 ```text
-https://markusmj2256.github.io/Codex-hjemmeside/
+https://markusmj2256.github.io/Tutor-hjemmeside/
 ```
 
 ## Kontaktformular

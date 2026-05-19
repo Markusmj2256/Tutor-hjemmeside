@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 const plugins = [tailwindcss()];
 
 export default defineConfig({
-  base: process.env.GITHUB_PAGES === "true" ? "/Codex-hjemmeside/" : "/",
+  base: process.env.GITHUB_PAGES === "true" ? "/Tutor-hjemmeside/" : "/",
   plugins,
   resolve: {
     alias: {
