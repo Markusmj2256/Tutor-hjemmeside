@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1768212645543,
+      "tag": "0000_warm_crusher_hogan",
+      "breakpoints": true
+    }
+  ]
+}
