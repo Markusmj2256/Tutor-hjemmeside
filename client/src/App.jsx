@@ -186,44 +186,45 @@ function ContactForm({ title, description, tone = 'light', defaultPackage = '' }
     }
 
     const sendWithFormSubmit = async () => {
-      const payload = new FormData()
       const selectedPackage = formData.interestedPackage || 'Ikke specificeret'
       const studentNeeds = formData.studentNeeds || 'Ikke specificeret'
-
-      payload.append('name', formData.name)
-      payload.append('email', formData.email)
-      payload.append('_replyto', formData.email)
-      payload.append('Telefon', formData.phone)
-      payload.append('Interesse', selectedPackage)
-      payload.append('Beskrivelse af eleven og udfordringerne', studentNeeds)
-      payload.append(
-        'message',
-        [
-          'Ny henvendelse fra tutorsiden',
-          '',
-          `Navn: ${formData.name}`,
-          `Email: ${formData.email}`,
-          `Telefon: ${formData.phone}`,
-          `Interesse: ${selectedPackage}`,
-          '',
-          'Beskrivelse af eleven og udfordringerne:',
-          studentNeeds,
-        ].join('\n')
-      )
-      payload.append('_subject', `Ny henvendelse fra tutorsiden: ${formData.name}`)
-      payload.append('_template', 'table')
-      payload.append('_captcha', 'false')
+      const message = [
+        'Ny henvendelse fra tutorsiden',
+        '',
+        `Navn: ${formData.name}`,
+        `Email: ${formData.email}`,
+        `Telefon: ${formData.phone}`,
+        `Interesse: ${selectedPackage}`,
+        '',
+        'Beskrivelse af eleven og udfordringerne:',
+        studentNeeds,
+      ].join('\n')
 
       const response = await fetch(formSubmitEndpoint, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-        body: payload,
+        referrerPolicy: 'origin',
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          _replyto: formData.email,
+          Telefon: formData.phone,
+          Interesse: selectedPackage,
+          'Beskrivelse af eleven og udfordringerne': studentNeeds,
+          message,
+          _subject: `Ny henvendelse fra tutorsiden: ${formData.name}`,
+          _template: 'table',
+          _captcha: 'false',
+        }),
       })
 
-      if (!response.ok) {
-        throw new Error('Formularen kunne ikke sendes')
+      const result = await response.json().catch(() => null)
+
+      if (!response.ok || result?.success === false || result?.success === 'false') {
+        throw new Error(result?.message || 'Formularen kunne ikke sendes')
       }
     }
 
@@ -249,7 +250,14 @@ function ContactForm({ title, description, tone = 'light', defaultPackage = '' }
         interestedPackage: defaultPackage,
       })
     } catch (error) {
-      toast.error('Beskeden kunne ikke sendes lige nu. Prøv igen om lidt, eller kontakt mig på mail eller telefon.')
+      const message = error instanceof Error ? error.message : ''
+      const needsActivation = /activate|confirm|verification|bekræft/i.test(message)
+
+      toast.error(
+        needsActivation
+          ? 'Formularen skal aktiveres første gang. Tjek indbakken for en bekræftelsesmail fra FormSubmit.'
+          : `Beskeden kunne ikke sendes lige nu.${message ? ` Fejl: ${message}` : ''}`
+      )
     } finally {
       setIsSubmitting(false)
     }
